@@ -1,0 +1,14 @@
+channels:
+- id: bbc1.bbc.co.uk
+  name: BBC1 London
+  disp: BBC1
+
+- id: bbc2.bbc.co.uk
+  name: BBC2 London
+  disp: BBC2
+
+- id: bbc3.bbc.co.uk
+  name: BBC3
+
+- id: bbc4.bbc.co.uk
+  name: BBC4
