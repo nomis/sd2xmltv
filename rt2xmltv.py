@@ -22,6 +22,7 @@ from cachecontrol.caches import FileCache
 from datetime import datetime
 from datetime import timedelta
 import itertools
+import linecache
 import requests
 import os
 import yaml
@@ -66,6 +67,8 @@ def get(name, filename):
 
 
 def lines(data, base):
+	"""Split data up into lines, automatically checking and removing the EULA"""
+
 	lines = data.splitlines()
 
 	if len(lines) < 1 or lines[0] != "\t":
@@ -78,8 +81,12 @@ def lines(data, base):
 
 
 def eula(message, base):
+	"""Prompt if the EULA has not already been accepted"""
+
+	EULA_FILE = os.path.join(base, "eula")
+
 	try:
-		for line in open(os.path.join(base, "eula"), "rt", encoding="UTF-8"):
+		for line in linecache.getlines(EULA_FILE):
 			if line.rstrip("\n") == message:
 				return True
 	except FileNotFoundError:
@@ -94,8 +101,9 @@ def eula(message, base):
 	print()
 
 	if resp in ["", "Y", "y"]:
-		with open(os.path.join(base, "eula"), "at", encoding="UTF-8") as f:
+		with open(EULA_FILE, "at", encoding="UTF-8") as f:
 			f.write(message + "\n")
+		linecache.checkcache(EULA_FILE)
 		return True
 
 	if resp not in ["N", "n"]:
