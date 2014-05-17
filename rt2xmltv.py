@@ -21,9 +21,11 @@ from cachecontrol import CacheControl
 from cachecontrol.caches import FileCache
 from datetime import datetime
 from datetime import timedelta
+from enum import IntEnum
+from robotexclusionrulesparser import RobotExclusionRulesParser
+from time import sleep
 from xml.sax.saxutils import XMLGenerator
 import collections
-import enum
 import itertools
 import linecache
 import requests
@@ -32,9 +34,11 @@ import yaml
 
 
 BASE_URL = "http://xmltv.radiotimes.com/xmltv"
+USER_AGENT = "rt2xmltv/1 " + requests.utils.default_user_agent() + " (+https://github.com/lp0/rt2xmltv/)"
 
 session = CacheControl(requests.session(), cache=FileCache('.http-cache'))
-session.headers.update({"User-Agent": "rt2xmltv/1 " + requests.utils.default_user_agent()})
+session.headers.update({"User-Agent": USER_AGENT})
+robot = RobotExclusionRulesParser()
 
 
 def size_fmt(num):
@@ -59,20 +63,40 @@ def items_fmt(num):
 
 
 def get(name, filename):
-	global session
+	global session, robot
+
+	url = BASE_URL + filename
+	allowed = robot.is_allowed(USER_AGENT, url)
+	delay = robot.get_crawl_delay(USER_AGENT)
+	if delay is None:
+		delay = 0.1
+	if allowed:
+		sleep(delay)
 
 	print("Downloading " + name + "...", flush=True, end="")
 	try:
+		if not allowed:
+			raise Exception("Not allowed to download " + url)
+
 		start = datetime.utcnow()
-		r = session.get(BASE_URL + filename)
+		r = session.get(url)
 		duration = (datetime.utcnow() - start).total_seconds()
 		r.raise_for_status()
 		print(" " + size_fmt(len(r.text)) + " in " + time_fmt(duration) + " (" + size_fmt(len(r.text) / duration) + "/s)")
-	except:
-		print()
+	except Exception as e:
+		print(" " + str(e))
 		raise
 
 	return r.text
+
+
+def load_robots_txt():
+	global robot
+
+	try:
+		robot.parse(get("robots.txt", "/robots.txt"))
+	except:
+		pass
 
 
 def lines(data, base):
@@ -223,7 +247,7 @@ class Files(object):
 
 
 _count = itertools.count()
-class Fields(enum.IntEnum):
+class Fields(IntEnum):
 	title = next(_count)
 	sub_title = next(_count)
 	episode = next(_count)
@@ -270,7 +294,7 @@ class Programmes(object):
 		for line in self.lines:
 			data = line.split("~")
 			if len(data) != len(Fields):
-				raise Exception(("Fields in line %d != %d: " % len(data), len(Fields)) + repr(line))
+				raise Exception("Fields in line %d != %d: " % (len(data), len(Fields)) + repr(line))
 
 			for field in BOOL_FIELDS:
 				data[field] = data[field] == "true"
@@ -326,6 +350,8 @@ class Programmes(object):
 			raise
 
 def main(config="config", base=os.getcwd()):
+	load_robots_txt()
+
 	channels = get("channel list", "/channels.dat")
 	with open(os.path.join(base, "channels.dat"), "wt", encoding="UTF-8") as f:
 		f.write(channels)
