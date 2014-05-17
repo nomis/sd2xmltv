@@ -200,7 +200,7 @@ class Files(object):
 
 		if programme[Fields.star_rating]:
 			g.startElement("star-rating", {})
-			self._write_element(g, "value", programme[Fields.star_rating] + "/5")
+			self._write_element(g, "value", programme[Fields.star_rating])
 			g.endElement("star-rating")
 
 		if programme[Fields.certificate]:
@@ -208,11 +208,8 @@ class Files(object):
 			self._write_element(g, "value", programme[Fields.certificate])
 			g.endElement("rating")
 
-		if programme[Fields.film]:
-			self._write_element(g, "category", "Film")
-
-		if programme[Fields.genre] not in ["", "Film", "film", "No Genre"]:
-			self._write_element(g, "category", programme[Fields.genre])
+		self._write_element(g, "category", programme[Fields.film])
+		self._write_element(g, "category", programme[Fields.genre])
 
 		g.endElement("programme")
 		f.write("\n".encode("UTF-8"))
@@ -285,6 +282,18 @@ class Programmes(object):
 					else:
 						actors.add(actor[1] + " (" + actor[0] + ")")
 				data[Fields.cast] = actors
+
+			if data[Fields.star_rating]:
+				data[Fields.star_rating] += "/5"
+
+			if data[Fields.film]:
+				data[Fields.film] = "Film"
+
+				if data[Fields.genre].lower() == "film":
+					data[Fields.genre] = ""
+
+			if data[Fields.genre].lower() == "no genre":
+				data[Fields.genre] = "";
 
 			(day, month, year) = map(int, data[Fields.date].split("/"))
 			(start_hour, start_minute) = map(int, data[Fields.start].split(":"))
