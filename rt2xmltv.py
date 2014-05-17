@@ -205,7 +205,7 @@ class Files(object):
 
 		if programme[Fields.certificate]:
 			g.startElement("rating", {"system": "BBFC"})
-			self._write_element(g, "value", programme[Fields.star_rating])
+			self._write_element(g, "value", programme[Fields.certificate])
 			g.endElement("rating")
 
 		if programme[Fields.film]:
