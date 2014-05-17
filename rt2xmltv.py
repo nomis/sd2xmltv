@@ -61,15 +61,16 @@ def get(name, filename):
 	global session
 
 	print("Downloading " + name + "...", flush=True, end="")
-
-	start = datetime.utcnow()
-	r = session.get(BASE_URL + filename)
-	duration = (datetime.utcnow() - start).total_seconds()
-	if r.status_code != requests.codes.ok:
+	try:
+		start = datetime.utcnow()
+		r = session.get(BASE_URL + filename)
+		duration = (datetime.utcnow() - start).total_seconds()
+		r.raise_for_status()
+		print(" " + size_fmt(len(r.text)) + " in " + time_fmt(duration) + " (" + size_fmt(len(r.text) / duration) + "/s)")
+	except:
 		print()
-	r.raise_for_status()
+		raise
 
-	print(" " + size_fmt(len(r.text)) + " in " + time_fmt(duration) + " (" + size_fmt(len(r.text) / duration) + "/s)")
 	return r.text
 
 
@@ -104,8 +105,11 @@ def eula(message, base):
 	print(message)
 	print()
 	print("Accept? [Y/n] ", end="")
-	resp = input()
-	print()
+	try:
+		resp = input()
+	except:
+		print()
+		raise
 
 	if resp in ["", "Y", "y"]:
 		with open(EULA_FILE, "at", encoding="UTF-8") as f:
@@ -315,13 +319,16 @@ class Programmes(object):
 
 	def write(self, files):
 		print("Processing programmes for " + self.channel["name"] + "...", flush=True, end="")
-		start = datetime.utcnow()
-		id = self.channel["id"]
-		for (filedate, programme) in iter(self):
-			files.write(filedate, id, programme)
-		duration = (datetime.utcnow() - start).total_seconds()
-		print(" " + items_fmt(len(self.lines)) + " in " + time_fmt(duration) + " (" + items_fmt(len(self.lines) / duration) + "/s)")
-
+		try:
+			start = datetime.utcnow()
+			id = self.channel["id"]
+			for (filedate, programme) in iter(self):
+				files.write(filedate, id, programme)
+			duration = (datetime.utcnow() - start).total_seconds()
+			print(" " + items_fmt(len(self.lines)) + " in " + time_fmt(duration) + " (" + items_fmt(len(self.lines) / duration) + "/s)")
+		except:
+			print()
+			raise
 
 def main(config="config", base=os.getcwd()):
 	channels = get("channel list", "/channels.dat")
