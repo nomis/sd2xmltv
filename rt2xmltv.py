@@ -149,7 +149,12 @@ class Files(object):
 	def _write_element(self, g, name, value, attrs={}):
 		if value:
 			g.startElement(name, attrs)
-			if not isinstance(value, bool):
+			if isinstance(value, list):
+				for item in value:
+					self._write_element(g, *item)
+			elif isinstance(value, tuple):
+				self._write_element(g, *value)
+			elif not isinstance(value, bool):
 				g.characters(value)
 			g.endElement(name)
 
@@ -168,9 +173,7 @@ class Files(object):
 			g.startElement("tv", {"source-info-name": "Radio Times"})
 			f.write("\n".encode("UTF-8"))
 			for channel in self.config["channels"]:
-				g.startElement("channel", {"id": channel["id"]})
-				self._write_element(g, "display-name", channel["disp"] if "disp" in channel else channel["name"])
-				g.endElement("channel")
+				self._write_element(g, "channel", ("display-name", channel["disp"] if "disp" in channel else channel["name"]), {"id": channel["id"]})
 				f.write("\n".encode("UTF-8"))
 			self.files[filedate] = (f, g)
 
@@ -186,35 +189,25 @@ class Files(object):
 		self._write_element(g, "desc", programme[Fields.desc])
 
 		if programme[Fields.director] or programme[Fields.cast]:
-			g.startElement("credits", {})
-			self._write_element(g, "director", programme[Fields.director])
-			for actor in programme[Fields.cast]:
-				self._write_element(g, "actor", actor)
-			g.endElement("credits")
+			self._write_element(g, "credits", [("director", programme[Fields.director])] + [("actor", actor) for actor in programme[Fields.cast]])
 
 		self._write_element(g, "year", programme[Fields.year])
 
 		if programme[Fields.widescreen] or programme[Fields.black_and_white]:
-			g.startElement("video", {})
-			if programme[Fields.widescreen]:
-				self._write_element(g, "aspect", "16:9")
-			if programme[Fields.black_and_white]:
-				self._write_element(g, "colour", "no")
-			g.endElement("video")
+			self._write_element(g, "video", [
+				("aspect", "16:9" if programme[Fields.widescreen] else None),
+				("colour", "no" if programme[Fields.black_and_white] else None)
+			])
 
 		self._write_element(g, "premiere", programme[Fields.premiere])
 		self._write_element(g, "new", programme[Fields.new_series])
 		self._write_element(g, "subtitles", programme[Fields.subtitles], {"type": "teletext"})
 
 		if programme[Fields.star_rating]:
-			g.startElement("star-rating", {})
-			self._write_element(g, "value", programme[Fields.star_rating])
-			g.endElement("star-rating")
+			self._write_element(g, "star-rating", ("value", programme[Fields.star_rating]))
 
 		if programme[Fields.certificate]:
-			g.startElement("rating", {"system": "BBFC"})
-			self._write_element(g, "value", programme[Fields.certificate])
-			g.endElement("rating")
+			self._write_element(g, "rating", ("value", programme[Fields.certificate]), {"system": "BBFC"})
 
 		self._write_element(g, "category", programme[Fields.film])
 		self._write_element(g, "category", programme[Fields.genre])
