@@ -22,6 +22,7 @@ from cachecontrol.caches import FileCache
 from datetime import datetime
 from datetime import timedelta
 from xml.sax.saxutils import XMLGenerator
+import collections
 import enum
 import itertools
 import linecache
@@ -174,11 +175,11 @@ class Files(object):
 			self.files[filedate] = (f, g)
 
 		(f, g) = self.files[filedate]
-		g.startElement("programme", {
-			"start": programme[Fields.start].strftime("%Y%m%d%H%M%S"),
-			"stop": programme[Fields.stop].strftime("%Y%m%d%H%M%S"),
-			"channel": id
-		})
+		attrs = collections.OrderedDict()
+		attrs["channel"] = id
+		attrs["start"] = programme[Fields.start].strftime("%Y%m%d%H%M%S")
+		attrs["stop"] = programme[Fields.stop].strftime("%Y%m%d%H%M%S")
+		g.startElement("programme", attrs)
 
 		self._write_element(g, "title", programme[Fields.title])
 		self._write_element(g, "sub-title", ": ".join(filter(None, [programme[Fields.sub_title], programme[Fields.episode]])))
@@ -282,12 +283,12 @@ class Programmes(object):
 				data[field] = data[field] == "true"
 
 			if data[Fields.cast]:
-				actors = set()
+				actors = []
 				for actor in [x.split("*") for x in data[Fields.cast].split("|" if "|" in data[Fields.cast] else ",")]:
 					if len(actor) == 1:
-						actors.add(actor[0])
+						actors.append(actor[0])
 					else:
-						actors.add(actor[1] + " (" + actor[0] + ")")
+						actors.append(actor[1] + " (" + actor[0] + ")")
 				data[Fields.cast] = actors
 
 			if data[Fields.star_rating]:
