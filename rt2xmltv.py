@@ -139,8 +139,8 @@ class Channels(dict):
 
 
 class Files(object):
-	def __init__(self, channels, base):
-		self.channels = channels
+	def __init__(self, config, base):
+		self.config = config
 		self.base = base
 		self.now = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
 		self.files = {}
@@ -153,6 +153,9 @@ class Files(object):
 			g.endElement(name)
 
 	def write(self, filedate, id, programme):
+		if programme[Fields.start].hour < self.config["files"]["start_hour"]:
+			filedate -= timedelta(1)
+
 		if filedate < self.now:
 			return
 
@@ -163,7 +166,7 @@ class Files(object):
 			f.write("<!DOCTYPE tv SYSTEM \"xmltv.dtd\">\n".encode("UTF-8"))
 			g.startElement("tv", {"source-info-name": "Radio Times"})
 			f.write("\n".encode("UTF-8"))
-			for channel in self.channels:
+			for channel in self.config["channels"]:
 				g.startElement("channel", {"id": channel["id"]})
 				self._write_element(g, "display-name", channel["disp"] if "disp" in channel else channel["name"])
 				g.endElement("channel")
@@ -312,8 +315,6 @@ class Programmes(object):
 			data[Fields.stop] = stop
 
 			filedate = start.replace(hour=0, minute=0)
-			if start.hour < 6:
-				filedate -= timedelta(1)
 
 			yield (filedate, data)
 
@@ -336,13 +337,15 @@ def main(config="config", base=os.getcwd()):
 		f.write(channels)
 
 	channels = Channels(lines(channels, base))
-	config = yaml.load(open(os.path.join(base, config), "rt", encoding="UTF-8"))
+	config = yaml.safe_load(open(os.path.join(base, config), "rt", encoding="UTF-8"))
+	config.setdefault("files", {})
+	config["files"].setdefault("start_hour", 6)
 
 	programmes = []
 	for channel in config["channels"]:
 		programmes.append(Programmes(channel, lines(channels[channel["name"]], base)))
 
-	files = Files(config["channels"], base)
+	files = Files(config, base)
 	for item in programmes:
 		item.write(files)
 	files.close()

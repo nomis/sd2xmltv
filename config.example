@@ -1,3 +1,8 @@
+# Move programmes that start before 6am into the previous day's file
+files:
+  start_hour: 6
+
+# Define and rename channels
 channels:
 - id: bbc1.bbc.co.uk
   name: BBC1 London
