@@ -63,8 +63,6 @@ def items_fmt(num):
 
 
 def get(name, filename):
-	global session, robot
-
 	url = BASE_URL + filename
 	allowed = robot.is_allowed(USER_AGENT, url)
 	delay = robot.get_crawl_delay(USER_AGENT)
@@ -91,8 +89,6 @@ def get(name, filename):
 
 
 def load_robots_txt():
-	global robot
-
 	try:
 		robot.parse(get("robots.txt", "/robots.txt"))
 	except:
