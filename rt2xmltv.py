@@ -85,6 +85,8 @@ def get(name, filename):
 		print(" " + str(e))
 		raise
 
+	if r.headers["Content-Type"] == "text/plain":
+		r.encoding = "UTF-8"
 	return r.text
 
 
