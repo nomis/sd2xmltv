@@ -100,7 +100,10 @@ def load_robots_txt():
 def lines(data, base):
 	"""Split data up into lines, automatically checking and removing the EULA"""
 
-	lines = data.splitlines()
+	data = data.replace("\r\n", "\n")
+	lines = data.split("\n")
+	if not lines[-1]:
+		lines.pop()
 
 	if len(lines) < 1 or lines[0] != "\t":
 		return lines
