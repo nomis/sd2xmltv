@@ -27,7 +27,6 @@ from time import sleep
 from xml.sax.saxutils import XMLGenerator
 import collections
 import itertools
-import linecache
 import requests
 import os
 import yaml
@@ -108,10 +107,10 @@ def lines(data, base):
 	if len(lines) < 1 or lines[0] != "\t":
 		return lines
 
-	if len(lines) == 1 or not eula(lines[1], base):
+	if len(lines) < 5 or not eula("\n".join(lines[1:5]), base):
 		return []
 
-	return lines[2:]
+	return lines[5:]
 
 
 def eula(message, base):
@@ -120,8 +119,8 @@ def eula(message, base):
 	EULA_FILE = os.path.join(base, "eula")
 
 	try:
-		for line in linecache.getlines(EULA_FILE):
-			if line.rstrip("\n") == message:
+		with open(EULA_FILE, "rt", encoding="UTF-8") as f:
+			if f.read() == message:
 				return True
 	except FileNotFoundError:
 		pass
@@ -138,9 +137,8 @@ def eula(message, base):
 		raise
 
 	if resp in ["", "Y", "y"]:
-		with open(EULA_FILE, "at", encoding="UTF-8") as f:
-			f.write(message + "\n")
-		linecache.checkcache(EULA_FILE)
+		with open(EULA_FILE, "wt", encoding="UTF-8") as f:
+			f.write(message)
 		return True
 
 	if resp not in ["N", "n"]:
