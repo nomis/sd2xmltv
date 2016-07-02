@@ -1,19 +1,24 @@
+login:
+  username: example
+  password: example
+
 # Move programmes that start before 6am into the previous day's file
 files:
   start_hour: 6
 
 # Define and rename channels
 channels:
-- id: bbc1.bbc.co.uk
-  name: BBC1 London
-  disp: BBC1
+ GBR-EXAMPLE:
+ - id: bbc1.bbc.co.uk
+   name: BBC1 London
+   disp: BBC1
 
-- id: bbc2.bbc.co.uk
-  name: BBC2 London
-  disp: BBC2
+ - id: bbc2.bbc.co.uk
+   name: BBC2 London
+   disp: BBC2
 
-- id: bbc3.bbc.co.uk
-  name: BBC3
+ - id: bbc3.bbc.co.uk
+   name: BBC3
 
-- id: bbc4.bbc.co.uk
-  name: BBC4
+ - id: bbc4.bbc.co.uk
+   name: BBC4
