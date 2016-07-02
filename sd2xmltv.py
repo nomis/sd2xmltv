@@ -196,8 +196,8 @@ class Files(object):
 		if film and "originalAirDate" in programme:
 			if abs(programme["start"].date() - date(*[int(x) for x in programme["originalAirDate"].split("-")])) <= timedelta(2):
 				self._write_element(g, "premiere", programme.get("premiere"))
-		if new_series:
-			self._write_element(g, "new", programme.get("new_series"))
+
+		self._write_element(g, "new", new_series)
 
 		for rating in programme.get("contentRating", []):
 			self._write_element(g, "rating", ("value", rating["code"]), {"system": rating["body"]})
