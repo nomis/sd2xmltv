@@ -1,5 +1,7 @@
 .http-cache
+.http_cache.sqlite
 channels.dat
 config
 eula
 *.xmltv
+__pycache__

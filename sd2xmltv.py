@@ -2,7 +2,7 @@
 
 #  sd2xmltv - Schedules Direct to XMLTV downloader
 #
-#  Copyright ©2014-2016 Simon Arlott
+#  Copyright ©2014-2017 Simon Arlott
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -39,7 +39,7 @@ import yaml
 
 
 BASE_URL = "https://json.schedulesdirect.org/20141201"
-USER_AGENT = "sa-sd2xmltv/1 " + requests.utils.default_user_agent() + " (+https://github.com/lp0/sd2xmltv/)"
+USER_AGENT = "sa-sd2xmltv/1 " + requests.utils.default_user_agent() + " (+https://github.com/nomis/sd2xmltv/)"
 
 tz = tzlocal.get_localzone()
 requests_cache.install_cache(os.path.join(os.getcwd(), ".http_cache"), allowable_methods=("GET", "POST"), include_get_headers=False, expire_after=10800)
@@ -72,14 +72,15 @@ def safe_filename(text):
 	return "".join([c if re.match(r"[\w-]", c) else "_" for c in text])
 
 
-def get(name, filename, params=None):
+def get(name, filename, params=None, query=None):
 	url = BASE_URL + filename
 
 	print("Downloading " + name + "...", flush=True, end="")
+	r = None
 	try:
 		start = datetime.utcnow()
 		if params is None:
-			r = session.get(url)
+			r = session.get(url, params=query)
 		else:
 			r = session.post(url, json.dumps(params))
 		duration = (datetime.utcnow() - start).total_seconds()
@@ -87,6 +88,31 @@ def get(name, filename, params=None):
 		print(" " + size_fmt(len(r.text)) + " in " + time_fmt(duration) + " (" + size_fmt(len(r.text) / duration) + "/s)")
 	except Exception as e:
 		print(" " + str(e))
+		if r is not None:
+			print(r.headers)
+			print(r.text)
+		raise
+
+	if r.headers["Content-Type"] == "text/plain":
+		r.encoding = "UTF-8"
+	return json.loads(r.text)
+
+def put(name, filename):
+	url = BASE_URL + filename
+
+	print(name + "...", flush=True, end="")
+	r = None
+	try:
+		start = datetime.utcnow()
+		r = session.put(url)
+		duration = (datetime.utcnow() - start).total_seconds()
+		r.raise_for_status()
+		print(" " + size_fmt(len(r.text)) + " in " + time_fmt(duration) + " (" + size_fmt(len(r.text) / duration) + "/s)")
+	except Exception as e:
+		print(" " + str(e))
+		if r is not None:
+			print(r.headers)
+			print(r.text)
 		raise
 
 	if r.headers["Content-Type"] == "text/plain":
@@ -99,7 +125,7 @@ class Channels(dict):
 		super()
 		self.data = lineup_data
 
-		for station in self.data["stations"]:
+		for station in filter(None, self.data["stations"]):
 			self[station["name"]] = station["stationID"]
 
 	def __getitem__(self, key):
@@ -238,6 +264,8 @@ class ProgramData(dict):
 class Programmes(object):
 	def __init__(self, channel, schedule):
 		self.channel = channel
+		if not "programs" in schedule[0]:
+			print(schedule)
 		self.schedule = list(itertools.chain(*[x["programs"] for x in schedule]))
 		self.program_data = ProgramData(self.schedule)
 
@@ -289,38 +317,43 @@ class Programmes(object):
 			raise
 
 
-def main(config="config", base=os.getcwd()):
-	config = yaml.safe_load(open(os.path.join(base, config), "rt", encoding="UTF-8"))
-	config.setdefault("files", {})
-	config["files"].setdefault("start_hour", 6)
+class SD2XMLTV(object):
+	def __init__(self, config="config", base=os.getcwd()):
+		self.base = base
+		self.config = yaml.safe_load(open(os.path.join(self.base, config), "rt", encoding="UTF-8"))
+		self.config.setdefault("files", {})
+		self.config["files"].setdefault("start_hour", 6)
 
-	with requests_cache.core.disabled():
-		token = get("token", "/token", { "username": config["login"]["username"], "password": hashlib.sha1(config["login"]["password"].encode("UTF-8")).hexdigest().lower() })
-		if token["code"] != 0:
-			raise Exception(token)
-		session.headers.update({ "token": token["token"] })
-		status = get("status", "/status")
-		if status["code"] != 0:
-			raise Exception(status)
+		with requests_cache.core.disabled():
+			token = get("token", "/token", { "username": self.config["login"]["username"], "password": hashlib.sha1(self.config["login"]["password"].encode("UTF-8")).hexdigest().lower() })
+			if token["code"] != 0:
+				raise Exception(token)
+			session.headers.update({ "token": token["token"] })
+			self.status = get("status", "/status")
+			if self.status["code"] != 0:
+				raise Exception(self.status)
 
-	channels = {}
+	def main(self):
+		channels = {}
 
-	for lineup in status["lineups"]:
-		lineup_channels = get("lineup " + lineup["lineup"], "/lineups/" + lineup["lineup"])
-		with open(os.path.join(base, "channels_" + safe_filename(lineup["lineup"])), "wt", encoding="UTF-8") as f:
-			f.write(json.dumps(lineup_channels, indent=2, sort_keys=True))
+		lineups = get("lineups", "/lineups")["lineups"]
 
-		channels[lineup["lineup"]] = Channels(lineup_channels)
+		for lineup in lineups:
+			lineup_channels = get("lineup " + lineup["lineup"], "/lineups/" + lineup["lineup"])
+			with open(os.path.join(self.base, "channels_" + safe_filename(lineup["lineup"])), "wt", encoding="UTF-8") as f:
+				f.write(json.dumps(lineup_channels, indent=2, sort_keys=True))
 
-	programmes = []
-	for (lineup, lineup_channels) in config["channels"].items():
-		for channel in lineup_channels:
-			programmes.append(Programmes(channel, channels[lineup][channel["name"]]))
+			channels[lineup["lineup"]] = Channels(lineup_channels)
 
-	files = Files(config, base)
-	for item in programmes:
-		item.write(files)
-	files.close()
+		programmes = []
+		for (lineup, lineup_channels) in self.config["channels"].items():
+			for channel in lineup_channels:
+				programmes.append(Programmes(channel, channels[lineup][channel["name"]]))
+
+		files = Files(self.config, self.base)
+		for item in programmes:
+			item.write(files)
+		files.close()
 
 if __name__ == "__main__":
-	main()
+	SD2XMLTV().main()
