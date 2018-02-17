@@ -2,7 +2,7 @@
 
 #  sd2xmltv - Schedules Direct to XMLTV downloader
 #
-#  Copyright ©2014-2017 Simon Arlott
+#  Copyright ©2014-2018 Simon Arlott
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -324,7 +324,7 @@ class SD2XMLTV(object):
 		self.config.setdefault("files", {})
 		self.config["files"].setdefault("start_hour", 6)
 
-		with requests_cache.core.disabled():
+		with session.cache_disabled():
 			token = get("token", "/token", { "username": self.config["login"]["username"], "password": hashlib.sha1(self.config["login"]["password"].encode("UTF-8")).hexdigest().lower() })
 			if token["code"] != 0:
 				raise Exception(token)
