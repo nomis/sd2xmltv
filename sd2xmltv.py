@@ -43,6 +43,7 @@ USER_AGENT = "sa-sd2xmltv/1 " + requests.utils.default_user_agent() + " (+https:
 
 tz = tzlocal.get_localzone()
 requests_cache.install_cache(os.path.join(os.getcwd(), ".http_cache"), allowable_methods=("GET", "POST"), include_get_headers=False, expire_after=10800)
+requests_cache.core.remove_expired_responses()
 session = requests.session()
 session.headers.update({"User-Agent": USER_AGENT})
 
