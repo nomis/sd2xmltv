@@ -34,15 +34,26 @@ import pytz
 import re
 import requests
 import requests_cache
+import tempfile
 import tzlocal
 import yaml
 
 
 BASE_URL = "https://json.schedulesdirect.org/20141201"
 USER_AGENT = "sa-sd2xmltv/1 " + requests.utils.default_user_agent() + " (+https://github.com/nomis/sd2xmltv/)"
+TEMP_DIR_LINK = os.path.join("/", "run", "user", str(os.getuid()), "sd2xmltv")
+
+try:
+	os.stat(TEMP_DIR_LINK)
+except FileNotFoundError:
+	try:
+		os.unlink(TEMP_DIR_LINK)
+	except:
+		pass
+	os.symlink(tempfile.mkdtemp(prefix="sd2xmltv."), TEMP_DIR_LINK)
 
 tz = tzlocal.get_localzone()
-requests_cache.install_cache(os.path.join(os.getcwd(), ".http_cache"), allowable_methods=("GET", "POST"), include_get_headers=False, expire_after=10800)
+requests_cache.install_cache(os.path.join(TEMP_DIR_LINK, "http_cache"), allowable_methods=("GET", "POST"), include_get_headers=False, expire_after=10800)
 requests_cache.core.remove_expired_responses()
 session = requests.session()
 session.headers.update({"User-Agent": USER_AGENT})
