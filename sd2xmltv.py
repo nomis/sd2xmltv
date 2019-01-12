@@ -2,7 +2,7 @@
 
 #  sd2xmltv - Schedules Direct to XMLTV downloader
 #
-#  Copyright ©2014-2018 Simon Arlott
+#  Copyright 2014-2019  Simon Arlott
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -133,8 +133,9 @@ def put(name, filename):
 
 
 class Channels(dict):
-	def __init__(self, lineup_data):
+	def __init__(self, name, lineup_data):
 		super()
+		self.name = name
 		self.data = lineup_data
 
 		for station in filter(None, self.data["stations"]):
@@ -142,7 +143,7 @@ class Channels(dict):
 
 	def __getitem__(self, key):
 		if key not in self:
-			raise Exception("Channel " + key + " not found")
+			raise Exception("Channel " + key + " not found in " + self.name)
 
 		return get("schedules for " + key, "/schedules", [{ "stationID": dict.__getitem__(self, key) }])
 
@@ -355,7 +356,7 @@ class SD2XMLTV(object):
 			with open(os.path.join(self.base, "channels_" + safe_filename(lineup["lineup"])), "wt", encoding="UTF-8") as f:
 				f.write(json.dumps(lineup_channels, indent=2, sort_keys=True))
 
-			channels[lineup["lineup"]] = Channels(lineup_channels)
+			channels[lineup["lineup"]] = Channels(lineup["lineup"], lineup_channels)
 
 		programmes = []
 		for (lineup, lineup_channels) in self.config["channels"].items():
