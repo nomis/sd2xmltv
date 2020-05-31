@@ -324,7 +324,10 @@ class Programmes(object):
 			for (filedate, programme) in iter(self):
 				files.write(filedate, id, programme)
 			duration = (datetime.utcnow() - start).total_seconds()
-			print(" " + items_fmt(len(self.schedule)) + " in " + time_fmt(duration) + " (" + items_fmt(len(self.schedule) / duration) + "/s)")
+			if duration > 0:
+				print(" " + items_fmt(len(self.schedule)) + " in " + time_fmt(duration) + " (" + items_fmt(len(self.schedule) / duration) + "/s)")
+			else:
+				print(" " + items_fmt(len(self.schedule)) + " in " + time_fmt(duration))
 		except:
 			print()
 			raise
