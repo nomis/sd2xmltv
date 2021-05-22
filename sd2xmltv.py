@@ -2,7 +2,7 @@
 
 #  sd2xmltv - Schedules Direct to XMLTV downloader
 #
-#  Copyright 2014-2019  Simon Arlott
+#  Copyright 2014-2021  Simon Arlott
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -57,6 +57,9 @@ requests_cache.install_cache(os.path.join(TEMP_DIR_LINK, "http_cache"), allowabl
 requests_cache.core.remove_expired_responses()
 session = requests.session()
 session.headers.update({"User-Agent": USER_AGENT})
+
+def no_cache():
+	return session.cache_disabled()
 
 def size_fmt(num):
 	for x in ["B", "KB"]:
@@ -117,6 +120,28 @@ def put(name, filename):
 	try:
 		start = datetime.utcnow()
 		r = session.put(url)
+		duration = (datetime.utcnow() - start).total_seconds()
+		r.raise_for_status()
+		print(" " + size_fmt(len(r.text)) + " in " + time_fmt(duration) + " (" + size_fmt(len(r.text) / duration) + "/s)")
+	except Exception as e:
+		print(" " + str(e))
+		if r is not None:
+			print(r.headers)
+			print(r.text)
+		raise
+
+	if r.headers["Content-Type"] == "text/plain":
+		r.encoding = "UTF-8"
+	return json.loads(r.text)
+
+def delete(name, filename):
+	url = BASE_URL + filename
+
+	print(name + "...", flush=True, end="")
+	r = None
+	try:
+		start = datetime.utcnow()
+		r = session.delete(url)
 		duration = (datetime.utcnow() - start).total_seconds()
 		r.raise_for_status()
 		print(" " + size_fmt(len(r.text)) + " in " + time_fmt(duration) + " (" + size_fmt(len(r.text) / duration) + "/s)")
